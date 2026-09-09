@@ -9,7 +9,7 @@ interface Todo {
 
 const app = express();
 
-const todos: Todo[] = [
+let todos: Todo[] = [
         { id: 1, title: "Learn TypeScript", completed: false },
         { id: 2, title: "Build a REST API", completed: false },
         { id: 3, title: "Write unit tests", completed: false }
@@ -46,6 +46,51 @@ app.post("/todos",(req,res) =>{
     todos.push(newTodo);
     res.status(201).json(newTodo);
 
+});
+
+ app.patch("/todos/:id", (req,res) =>{
+     
+    const id= Number(req.params.id);
+    if(Number.isNaN(id)){
+        return res.status(400).json ({ error: "id must be a number" });
+
+    }
+
+    const todo = todos.find( t => t.id === id);
+    if(!todo){
+        return res.status(404).json({ error: " todo not found" });
+        
+    }
+
+    if(typeof req.body.completed !== "boolean"){
+        return res.status(400).json({ error: "completed must be a boolean"});
+    }
+    todo.completed = req.body.completed;
+
+    res.json(todo);
+
+    
+
+ });
+
+app.delete("/todos/:id", (req, res) => {
+  // validate param
+  const id = Number(req.params.id);
+  if (Number.isNaN(id)) {
+    return res.status(400).json({ error: "id must be a number" });
+  }
+
+  // delete
+  let original = todos.length;
+  todos = todos.filter(t => t.id !== id);
+
+  // check if anything was actually deleted
+  if (todos.length === original) {
+    return res.status(404).json({ error: "todo not found" });
+  }
+
+  // respond with no content
+  res.status(204).send();
 });
 
 app.listen(3000, () => {
