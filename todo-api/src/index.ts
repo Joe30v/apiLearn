@@ -1,5 +1,18 @@
 
 import express from "express";
+import { z, ZodError} from "zod";
+
+
+const CreateTodoSchema = z.object({
+    title:z.string().min(1, " title must not be empty"),
+
+ });
+
+ const UpdateTodoSchema = z.object({
+    completed:z.boolean()
+ });
+
+
 
 interface Todo {
     id: number;
@@ -30,23 +43,43 @@ app.get("/todos", (req, res) => {
 });
 
 app.post("/todos",(req,res) =>{
+    try{
+        const body = CreateTodoSchema.parse(req.body);
 
-    if(!req.body.title || typeof req.body.title !== "string"){
-        return res.status(400).send({ error: "Title is required and must be a string" });
+        const nextId = Math.max(...todos.map(t=>t.id),0)+1;  // i++
+        const newTodo:Todo ={
+            id:nextId,
+            title: body.title,
+            completed:false
+        };
 
+        todos.push(newTodo);
+        res.status(201).json(newTodo); //successful ceation
+    }catch(error){
+        if(error instanceof ZodError){
+            return res.status(400).json({ error: error.issues }); // nonsense data 
+        }
+        throw error;
     }
-    const nextId = Math.max(...todos.map(todo => todo.id)) + 1;
+        
+    });
+
+//     if(!req.body.title || typeof req.body.title !== "string"){
+//         return res.status(400).send({ error: "Title is required and must be a string" });
+
+//     }
+//     const nextId = Math.max(...todos.map(todo => todo.id)) + 1;
     
-    const newTodo: Todo = {
-        id: nextId,
-        title: req.body.title,
-        completed: false
-    };
+//     const newTodo: Todo = {
+//         id: nextId,
+//         title: req.body.title,
+//         completed: false
+//     };
 
-    todos.push(newTodo);
-    res.status(201).json(newTodo);
+//     todos.push(newTodo);
+//     res.status(201).json(newTodo);
 
-});
+// });
 
  app.patch("/todos/:id", (req,res) =>{
      
@@ -62,13 +95,24 @@ app.post("/todos",(req,res) =>{
         
     }
 
-    if(typeof req.body.completed !== "boolean"){
-        return res.status(400).json({ error: "completed must be a boolean"});
+    // if(typeof req.body.completed !== "boolean"){
+    //     return res.status(400).json({ error: "completed must be a boolean"});
+    // }
+    // todo.completed = req.body.completed;
+
+    // res.json(todo);
+
+    try{
+        const body = UpdateTodoSchema.parse(req.body);
+
+        todo.completed = body.completed;
+        res.json(todo);
+    }catch(error){
+        if(error instanceof ZodError){
+            return res.status(400).json({ error: error.issues });
+        }
+        throw error;
     }
-    todo.completed = req.body.completed;
-
-    res.json(todo);
-
     
 
  });
