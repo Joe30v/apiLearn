@@ -1,7 +1,7 @@
 
 import express from "express";
 import { z, ZodError} from "zod";
-
+import { readFile, writeFile } from "node:fs/promises";
 
 const CreateTodoSchema = z.object({
     title:z.string().min(1, " title must not be empty"),
@@ -10,7 +10,7 @@ const CreateTodoSchema = z.object({
 
  const UpdateTodoSchema = z.object({
     completed:z.boolean()
- });
+ }); 
 
 
 
@@ -30,6 +30,25 @@ let todos: Todo[] = [
 
  app.use(express.json());
 
+ async function loadTodos() {
+  try {
+    const data = await readFile("todos.json", "utf-8");
+    todos = JSON.parse(data);
+    console.log(`Loaded ${todos.length} todos from disk`);
+  } catch (error) {
+    console.log("Starting with empty todos (file not found)");
+    todos = [];
+  }
+}
+
+async function saveTodos() {
+  try {
+    await writeFile("todos.json", JSON.stringify(todos, null, 2));
+  } catch (error) {
+    console.error("Failed to save todos:", error);
+  }
+}
+
 app.get("/health", (req, res) => {
     console.log(req.method, req.path);
     res.send({ status: "OK" });
@@ -42,7 +61,7 @@ app.get("/todos", (req, res) => {
     res.json(todos);
 });
 
-app.post("/todos",(req,res) =>{
+app.post("/todos",async (req,res) =>{
     try{
         const body = CreateTodoSchema.parse(req.body);
 
@@ -54,6 +73,7 @@ app.post("/todos",(req,res) =>{
         };
 
         todos.push(newTodo);
+        await saveTodos();
         res.status(201).json(newTodo); //successful ceation
     }catch(error){
         if(error instanceof ZodError){
@@ -81,7 +101,7 @@ app.post("/todos",(req,res) =>{
 
 // });
 
- app.patch("/todos/:id", (req,res) =>{
+ app.patch("/todos/:id", async (req,res) =>{
      
     const id= Number(req.params.id);
     if(Number.isNaN(id)){
@@ -106,6 +126,7 @@ app.post("/todos",(req,res) =>{
         const body = UpdateTodoSchema.parse(req.body);
 
         todo.completed = body.completed;
+        await saveTodos();
         res.json(todo);
     }catch(error){
         if(error instanceof ZodError){
@@ -117,7 +138,7 @@ app.post("/todos",(req,res) =>{
 
  });
 
-app.delete("/todos/:id", (req, res) => {
+app.delete("/todos/:id", async (req, res) => {
   // validate param
   const id = Number(req.params.id);
   if (Number.isNaN(id)) {
@@ -133,10 +154,18 @@ app.delete("/todos/:id", (req, res) => {
     return res.status(404).json({ error: "todo not found" });
   }
 
+  await saveTodos();
   // respond with no content
   res.status(204).send();
 });
 
+
+async function main(){
+ await loadTodos();
+
 app.listen(3000, () => {
     console.log("Server running on http://localhost:3000");
 });
+}
+
+main();
