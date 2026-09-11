@@ -1,5 +1,10 @@
 {
   "dependencies": {
+    "express": "^5.2.1",
     "zod": "^4.6.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2"
   }
 }
