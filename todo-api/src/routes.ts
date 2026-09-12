@@ -42,7 +42,7 @@ router.post("/todos", async (req, res) => {
 
         todos.push(newTodo);
 
-        await saveTodos();
+        await saveTodos(); // if throw global handler catches it 
 
         res.status(201).json(newTodo);
     } catch (error) {
