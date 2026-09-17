@@ -18,8 +18,8 @@ export function setTodos(newTodos: Todo[]) {
 
 export async function loadTodos() {
     try {
-        const data = await readFile("todos.json", "utf-8");
-        todos = JSON.parse(data);
+        const fileContents = await readFile("todos.json", "utf-8");
+        todos = JSON.parse(fileContents);
         console.log(`Loaded ${todos.length} todos from disk`);
     } catch (error) {
         console.log("Starting with empty todos (file not found)");
@@ -35,5 +35,6 @@ export async function saveTodos() {
         );
     } catch (error) {
         console.error("Failed to save todos:", error);
+        throw error;
     }
 }

@@ -3,8 +3,9 @@ import { ZodError } from "zod";
 
 import {
     getTodos,
+    setTodos,
     saveTodos,
-    Todo
+    type Todo
 } from "./db";
 
 import {
@@ -14,15 +15,11 @@ import {
 
 const router = Router();
 
-router.get("/health", (req, res) => {
-    console.log(req.method, req.path);
-
+router.get("/health", async (req, res) => {
     res.json({ status: "OK" });
 });
 
-router.get("/todos", (req, res) => {
-    console.log(req.method, req.path);
-
+router.get("/todos", async (req, res) => {
     res.json(getTodos());
 });
 
@@ -42,7 +39,7 @@ router.post("/todos", async (req, res) => {
 
         todos.push(newTodo);
 
-        await saveTodos(); // if throw global handler catches it 
+        await saveTodos();
 
         res.status(201).json(newTodo);
     } catch (error) {
@@ -113,9 +110,7 @@ router.delete("/todos/:id", async (req, res) => {
         });
     }
 
-    // Update the stored array
-    todos.length = 0;
-    todos.push(...remainingTodos);
+    setTodos(remainingTodos);
 
     await saveTodos();
 
