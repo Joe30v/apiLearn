@@ -7,3 +7,13 @@ export const CreateTodoSchema = z.object({
 export const UpdateTodoSchema = z.object({
     completed: z.boolean(),
 });
+
+export const RegisterSchema = z.object({
+    username: z.string().min(3).max(20),
+    password: z.string().min(6),
+});
+
+export const LoginSchema = z.object({
+    username: z.string(),
+    password: z.string(),
+});

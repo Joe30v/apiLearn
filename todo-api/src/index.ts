@@ -1,7 +1,7 @@
 import express from "express";
 
 import routes from "./routes";
-import { loadTodos } from "./db";
+import { loadTodos, loadUsers } from "./db";
 import { errorHandler } from "./middleware";
 
 const app = express();
@@ -14,6 +14,7 @@ app.use(errorHandler);
 
 async function main() {
     await loadTodos();
+    await loadUsers();
 
     app.listen(3000, () => {
         console.log(
