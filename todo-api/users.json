@@ -3,5 +3,35 @@
     "id": 1,
     "username": "joe",
     "password": "$2b$10$PHludO4TmHvvzsPurMo2l.xkvhIUg3bKBK.l24uuOdM0l0zBEMr6u"
+  },
+  {
+    "id": 2,
+    "username": "testuser_sep26",
+    "password": "$2b$10$cLVQvCV8vcpctWl6iBIuSeNe4fWn.3jWBpdjuLTZPCBayX3gyd8Yi"
+  },
+  {
+    "id": 3,
+    "username": "testuser123",
+    "password": "$2b$10$8QZ7ul1nr76uQDp.na1KFu9cWDzx/vUIW9qvQyOxf5Snc1PIeQA5K"
+  },
+  {
+    "id": 4,
+    "username": "corrupt_test_11715",
+    "password": "$2b$10$MzQldG5EU5wa8NgtxM1XbOyh9dr.TsSXSmncW9bbWhMFsErPdh.Ly"
+  },
+  {
+    "id": 5,
+    "username": "corrupt_test_22763",
+    "password": "$2b$10$3O9ILYeifVxy4He0ELtZ9ezKt3L8v47suFC2s/pV3kBMYgZuA/8Mq"
+  },
+  {
+    "id": 6,
+    "username": "alice",
+    "password": "$2b$10$ZHuU2XLQYFEScXi8bObQBuT26KSNQCHfhXwPylhKT6GfLfp7.ubJC"
+  },
+  {
+    "id": 7,
+    "username": "bob",
+    "password": "$2b$10$UbFz54V3zEDavv054r35SeZVfkLv9mznmRACgOXM9yU9bjxifntuS"
   }
 ]

@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { ZodError } from "zod";
+import { ZodError, type ZodType } from "zod";
 import jwt from "jsonwebtoken";
 
 import { SECRET_KEY } from "./config";
@@ -9,6 +9,8 @@ export function authMiddleware(
     res: Response,
     next: NextFunction
 ) {
+
+    
     const authHeader = req.headers.authorization;
 
     if (!authHeader?.startsWith("Bearer ")) {
@@ -33,6 +35,22 @@ export function authMiddleware(
             error: "Invalid or expired token"
         });
     }
+}
+
+
+export function validate(schema: ZodType) {
+    return (req: Request, res: Response, next: NextFunction) => {
+        const result = schema.safeParse(req.body);
+
+        if (!result.success) {
+            return res.status(400).json({
+                error: result.error.issues[0]?.message ?? "Invalid input"
+            });
+        }
+
+        req.body = result.data;
+        next();
+    };
 }
 
 export function errorHandler(
