@@ -92,16 +92,69 @@ router.get("/health", async (req, res) => {
     res.json({ status: "OK" });
 });
 
-const TODO_COLUMNS = 'id, title, completed, user_id AS "userId", created_at AS "createdAt"';
+const TODO_COLUMNS = 'todos.id, todos.title, todos.completed, todos.user_id AS "userId", todos.created_at AS "createdAt"';
 
 router.get("/todos", authMiddleware, async (req, res) => {
     try {
-        const todos = await query(
-            `SELECT ${TODO_COLUMNS} FROM todos WHERE user_id = $1 ORDER BY created_at DESC`,
-            [req.userId]
-        );
+        const { sort,status, search} = req.query;
+        const params: unknown[] = [req.userId];
+        let where = "WHERE todos.user_id = $1";
+
+        const pageNum = Math.max(1, Number(req.query.page) || 1);
+        const pageSize = Math.max(1, Math.min(100, Number(req.query.pageSize) || 10));
+        const offset = (pageNum - 1) * pageSize;
+        
+
+        if (status === "complete") {
+            where += " AND todos.completed = TRUE";
+        } else if (status === "incomplete") {
+            where += " AND todos.completed = FALSE";
+        }
+
+        if( typeof search === "string" && search.trim() !== "") {
+          where += ` AND todos.title ILIKE $${params.length + 1}`;
+          params.push(`%${search.trim()}%`);
+        }
+
+         const countRows = await query(
+           `SELECT COUNT(*) AS count FROM todos ${where}`,
+           params
+          );
+          const totalCount = Number(countRows[0].count);
+         
+          let sql = `SELECT ${TODO_COLUMNS}, users.username
+           FROM todos
+           JOIN users ON todos.user_id = users.id
+           ${where}`;
+
+
+        if(sort === "oldest") {
+          sql += " ORDER BY todos.created_at ASC";
+        } else if ( sort === "title") {
+          sql += " ORDER BY todos.title ASC";
+        } else {
+          sql += " ORDER BY todos.created_at DESC";
+        }
+
+         sql += ` LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+        params.push(pageSize, offset);
+
+        const todos = await query(sql, params);
+
+        res.json({
+          todos,
+          pagination: {
+            page: pageNum,
+            pageSize,
+            total: totalCount,
+            totalPages: Math.ceil(totalCount / pageSize)
+          }
+        });
+        
+
         res.json(todos);
     } catch (err) {
+      console.error(err);
         res.status(500).json({ error: "Failed to load todos" });
     }
 });
@@ -160,5 +213,50 @@ router.delete("/todos/:id", authMiddleware, async (req, res) => {
     res.status(500).json({ error: "Failed to delete todo" });
   }
 });
+
+ router.get("/todos/stats", authMiddleware, async (req, res) => {
+  const userId = req.userId;
+  try {
+    const rows = await query(
+      `SELECT 
+        COUNT(*) AS total,
+        COUNT(*) FILTER (WHERE completed = TRUE) AS completed,
+        COUNT(*) FILTER (WHERE completed = FALSE) AS incomplete
+       FROM todos
+       WHERE user_id = $1`,
+      [req.userId]
+    );
+
+    const stats = rows;
+    res.json(stats[0]);
+  }catch (err) {
+    res.status(500).json({ error: "Failed to fetch stats" });
+  }
+});
+
+ router.get("/todos/with-user", authMiddleware, async (req, res) => {
+  const userId = req.userId;
+
+  try {
+    const todos = await query(
+      `SELECT
+        todos.id,
+        todos.title,
+        todos.completed,
+        todos.created_at AS "createdAt",
+        users.username,
+        users.email
+      FROM todos
+      INNER JOIN users ON todos.user_id = users.id
+      WHERE todos.user_id = $1
+      ORDER BY todos.created_at DESC`,
+      [userId]
+    );
+    
+    res.json(todos);
+    }catch (err) {
+    res.status(500).json({ error: "Failed to fetch todos with user info" });
+  }
+    });
 
 export default router;
