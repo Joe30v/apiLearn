@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { ZodError } from "zod";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { query } from "./pg"; // send sql to postgre and return row as array
@@ -19,15 +18,15 @@ import { authMiddleware, validate } from "./middleware";
 
 const router = Router();
 
-router.post("/register", async (req, res) => {
+router.post("/register", validate(RegisterSchema), async (req, res) => {
     try {
-        const body = RegisterSchema.parse(req.body); // check body is valid, if not throw ZodError
+        const body = req.body; // alrd validated  by validate(RegisterSchema)
         const hashedPassword = await bcrypt.hash(body.password, 10);
 
         // UNIQUE constraint on username rejects duplicates (caught below as 23505)
         const rows = await query(
-            "INSERT INTO users (username, password) VALUES ($1, $2) RETURNING id, username",
-            [body.username, hashedPassword]
+            "INSERT INTO users (username, password, email) VALUES ($1, $2, $3) RETURNING id, username",
+            [body.username, hashedPassword, body.email ?? null]
         );
 
         res.status(201).json({
@@ -35,26 +34,21 @@ router.post("/register", async (req, res) => {
             userId: rows[0].id
         });
     } catch (error: any) {
-        if (error instanceof ZodError) {
-            return res.status(400).json({
-                error: "Invalid input"
-            });
-        }
-        if(error.code === '23505') { // Unique violation error code
-            return res.status(409).json({
-                error: "Username already taken"
-            });
-        }
+        
+        if (error.code === '23505') {
+        const field = error.constraint === "users_email_key" ? "Email" : "Username";
+        return res.status(409).json({ error: `${field} already taken` });
+    }
 
         res.status(500).json({
-            error: " Registration failed"
+            error: "Registration failed"
         });
     }
 });
 
-router.post("/login", async (req, res) => {
+router.post("/login", validate(LoginSchema), async (req, res) => {
   try {
-    const body = LoginSchema.parse(req.body);
+    const body = req.body; // already validated by validate(LoginSchema)
 
     // Find user
     const rows = await query(
@@ -63,13 +57,13 @@ router.post("/login", async (req, res) => {
     );
     const user = rows[0];
     if (!user) {
-      return res.status(401).json({ error: "User not found" });
+      return res.status(401).json({ error: "Invalid credentials" });
     }
 
     // Verify password
     const isCorrect = await bcrypt.compare(body.password, user.password);
     if (!isCorrect) {
-      return res.status(401).json({ error: "Wrong password" });
+      return res.status(401).json({ error: "Invalid credentials" });
     }
 
     // Create JWT token
@@ -81,9 +75,6 @@ router.post("/login", async (req, res) => {
 
     res.json({ token, userId: user.id });
   } catch (err) {
-    if (err instanceof ZodError) {
-      return res.status(400).json({ error: "Invalid input" });
-    }
     res.status(500).json({ error: "Login failed" });
   }
 });
@@ -96,7 +87,7 @@ const TODO_COLUMNS = 'todos.id, todos.title, todos.completed, todos.user_id AS "
 
 router.get("/todos", authMiddleware, async (req, res) => {
     try {
-        const { sort,status, search} = req.query;
+        const { sort,status, search, page = 1,limit = 10 } = req.query;
         const params: unknown[] = [req.userId];
         let where = "WHERE todos.user_id = $1";
 
@@ -154,7 +145,7 @@ router.get("/todos", authMiddleware, async (req, res) => {
 
         res.json(todos);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to load todos:", err);
         res.status(500).json({ error: "Failed to load todos" });
     }
 });
@@ -162,6 +153,7 @@ router.get("/todos", authMiddleware, async (req, res) => {
 
 // Order matters: auth first, then validate, then the handler
 router.post("/todos", authMiddleware, validate(CreateTodoSchema), async (req, res) => {
+
   try {
     const body: CreateTodoInput = req.body; // already validated and trimmed
 
@@ -258,5 +250,22 @@ router.delete("/todos/:id", authMiddleware, async (req, res) => {
     res.status(500).json({ error: "Failed to fetch todos with user info" });
   }
     });
+
+     router.get("/todos/:id", authMiddleware, async (req, res) => {
+      try{
+        const id = Number(req.params.id);
+        const rows= await query(
+          `SELECT ${TODO_COLUMNS} FROM todos WHERE  id = $1 AND user_id = $2`,
+          [id, req.userId]
+        );
+
+        if(rows.length ===0) return res.status(404).json({error: "Todo not found"});
+
+        res.json(rows[0]);
+      }catch (err) {
+        res.status(500).json({ error: "Failed to fetch todo" });
+      }
+      });
+
 
 export default router;

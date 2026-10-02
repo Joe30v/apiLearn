@@ -1,11 +1,11 @@
 import express from "express";
-import cors from "cors";
 
 import routes from "./routes";
 import { runMigrations } from "./migrate";
 import { errorHandler } from "./middleware";
 
 const app = express();
+const cors= require("cors");
 
 // CORS must run before the routes so every response (including preflight OPTIONS) gets the headers
 app.use(cors({

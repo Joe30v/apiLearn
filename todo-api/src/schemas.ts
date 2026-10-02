@@ -23,11 +23,16 @@ export type CreateTodoInput = z.infer<typeof CreateTodoSchema>;
 export type UpdateTodoInput = z.infer<typeof UpdateTodoSchema>;
 
 export const RegisterSchema = z.object({
-    username: z.string().min(3).max(20),
-    password: z.string().min(6),
+    username: z.string({ error: "Username is required" })
+        .trim()
+        .min(3, "Username must be at least 3 characters")
+        .max(20, "Username must be 20 characters or less"),
+    password: z.string({ error: "Password is required" })
+        .min(6, "Password must be at least 6 characters")
+        .regex(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]+$/, "Password must contain at least one letter and one number"),
 });
 
 export const LoginSchema = z.object({
-    username: z.string(),
-    password: z.string(),
+    username: z.string({ error: "Username is required" }),
+    password: z.string({ error: "Password is required" }),
 });
