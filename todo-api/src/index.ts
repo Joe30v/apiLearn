@@ -9,7 +9,7 @@ const cors= require("cors");
 
 // CORS must run before the routes so every response (including preflight OPTIONS) gets the headers
 app.use(cors({
-    origin: "http://localhost:5173",
+    origin: process.env.CORS_ORIGIN ?? "http://localhost:5173",
     credentials: true
 }));
 
@@ -23,9 +23,11 @@ async function main() {
     // Bring the database schema up to date before accepting requests
     await runMigrations();
 
-    app.listen(3000, () => {
+    const port = Number(process.env.PORT) || 3000;
+
+    app.listen(port, () => {
         console.log(
-            "Server running on http://localhost:3000"
+            `Server running on http://localhost:${port}`
         );
     });
 }
