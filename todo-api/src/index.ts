@@ -1,5 +1,8 @@
+import "./instrument";
 import app from "./app";
 import { runMigrations } from "./migrate";
+
+
 
 async function main() {
     // Bring the database schema up to date before accepting requests

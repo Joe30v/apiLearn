@@ -15,6 +15,8 @@ import {
 import { SECRET_KEY } from "./config";
 import { authMiddleware, validate } from "./middleware";
 
+const logger = require("./logger");
+
 
 const router = Router();
 
@@ -33,8 +35,9 @@ router.post("/register", validate(RegisterSchema), async (req, res) => {
             message: "User registered successfully",
             userId: rows[0].id
         });
+        logger.info("User registered successfully", { userId: rows[0].id });
     } catch (error: any) {
-        
+        logger.error("User registration failed", { error: error.message });
         if (error.code === '23505') {
         const field = error.constraint === "users_email_key" ? "Email" : "Username";
         return res.status(409).json({ error: `${field} already taken` });
@@ -57,12 +60,14 @@ router.post("/login", validate(LoginSchema), async (req, res) => {
     );
     const user = rows[0];
     if (!user) {
+      logger.warn("Login failed: user not found", { username: body.username });
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
     // Verify password
     const isCorrect = await bcrypt.compare(body.password, user.password);
     if (!isCorrect) {
+      logger.warn("Login failed: invalid password", { username: body.username });
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
@@ -73,14 +78,35 @@ router.post("/login", validate(LoginSchema), async (req, res) => {
       { expiresIn: "24h" }
     );
 
+    logger.info("User logged in successfully", { userId: user.id });
     res.json({ token, userId: user.id });
   } catch (err) {
+    logger.error("Login failed", { error: (err as Error).message , stack: (err as Error).stack });
     res.status(500).json({ error: "Login failed" });
   }
 });
 
 router.get("/health", async (req, res) => {
-    res.json({ status: "OK" });
+    try {
+        // Check database
+        await query("SELECT 1");
+
+        res.json({
+            status: "ok",
+            timestamp: new Date().toISOString(),
+            uptime: process.uptime(),
+            environment: process.env.NODE_ENV,
+            database: "connected"
+        });
+    } catch (error) {
+        logger.error("Health check failed", { error: (error as Error).message });
+
+        res.status(503).json({
+            status: "error",
+            database: "disconnected",
+            error: (error as Error).message
+        });
+    }
 });
 
 const TODO_COLUMNS = 'todos.id, todos.title, todos.completed, todos.user_id AS "userId", todos.created_at AS "createdAt"';
@@ -145,6 +171,7 @@ router.get("/todos", authMiddleware, async (req, res) => {
 
         res.json(todos);
     } catch (err) {
+      logger.error("Failed to load todos", { error: (err as Error).message, stack: (err as Error).stack });
       console.error("Failed to load todos:", err);
         res.status(500).json({ error: "Failed to load todos" });
     }

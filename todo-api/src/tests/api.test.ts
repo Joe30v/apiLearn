@@ -20,10 +20,11 @@ afterAll(async () => {
 });
 
 describe("API Tests", () => {
-    test("GET /health should return status OK", async () => {
+    test("GET /health should report database connected", async () => {
         const response = await request(app).get("/health");
         expect(response.statusCode).toBe(200);
-        expect(response.body).toEqual({ status: "OK" });
+        expect(response.body.status).toBe("ok");
+        expect(response.body.database).toBe("connected");
     });
 
     test("POST /register should create user", async () => {
